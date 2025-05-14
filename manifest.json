@@ -1,20 +1,11 @@
 {
-    "manifest_version": 3,
-    "name": "NemoEngine UI Enhancer",
+    "display_name": "NemoEngine UI Enhancer",
+    "author": "@NemoVonNirgend",
     "version": "1.0.0",
     "description": "Enhances the SillyTavern preset UI by making sections collapsible.",
-    "permissions": [
-    ],
-    "content_scripts": [
-        {
-            "js": ["content.js"],
-            "css": ["styles.css"], 
-            "run_at": "document_idle"
-        }
-    ],
-    "icons": {
-        "16": "icons/icon16.png",
-        "48": "icons/icon48.png",
-        "128": "icons/icon128.png"
-    }
+    "requires": [],
+    "optional": [],
+    "js": "content.js",
+    "css": "styles.css",
+    "loading_order": 1000
 }
