@@ -1,40 +1,54 @@
 // 1. CONFIGURATION
 // -----------------------------------------------------------------------------
-const DIVIDER_PREFIX = "==="; // How you identify your divider prompts (e.g., "=== CORE ===")
-// Or a more specific emoji/text combo:
-// const DIVIDER_MARKER_REGEX = /^✨📚︱DIVIDER:/; // Example for a very specific marker
+const DIVIDER_PREFIX_REGEX = /^=+ /; // Regex to identify dividers like "=== Section Name" or "== Section"
+                                     // The space after =+ is to avoid matching things like "var === val" if they appeared.
+                                     // Adjust if your dividers are strictly "===" without a space.
+
+// SELECTORS - VERY LIKELY CANDIDATES BASED ON THE AI'S JQUERY EXAMPLE.
+// VERIFY THESE WITH YOUR BROWSER'S INSPECT ELEMENT TOOL IF ISSUES ARISE.
+const PROMPTS_CONTAINER_SELECTOR = '#presets_preset_group'; // Parent container for all preset rows
+const PROMPT_ITEM_ROW_SELECTOR = '.presets_preset_entry_row'; // Selector for each individual preset row
+const PROMPT_NAME_SELECTOR_IN_ITEM = '.presets_preset_entry_name'; // Element within a row containing the name
+
 
 // 2. HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
 
-// Function to check if a prompt element is a divider
-function isDivider(promptElement) {
-    // This depends on how SillyTavern renders the prompt names in the UI.
-    // You'll need to inspect the DOM to find the right selector.
-    // Let's assume each prompt has a text element with the prompt name.
-    const promptNameElement = promptElement.querySelector('.prompt-name-selector'); // EXAMPLE SELECTOR
+// Function to get the name of a prompt element and check if it's a divider
+function getDividerInfo(promptElement) {
+    const promptNameElement = promptElement.querySelector(PROMPT_NAME_SELECTOR_IN_ITEM);
     if (promptNameElement) {
         const promptName = promptNameElement.textContent.trim();
-        return promptName.startsWith(DIVIDER_PREFIX);
-        // Or: return DIVIDER_MARKER_REGEX.test(promptName);
+        if (DIVIDER_PREFIX_REGEX.test(promptName)) {
+            // Extract clean name, removing the "===" prefix
+            const cleanName = promptName.replace(DIVIDER_PREFIX_REGEX, '').replace(/\s*=+$/, '').trim();
+            return { isDivider: true, name: cleanName, originalText: promptName };
+        }
     }
-    return false;
+    return { isDivider: false };
 }
 
 // Function to process and group prompts
 function organizePrompts() {
     console.log("NemoEngine UI Enhancer: Attempting to organize prompts...");
 
-    // Find the container that holds all the prompt items in the preset editor.
-    // This is CRUCIAL and requires inspecting SillyTavern's DOM.
-    // Let's assume it's a div with a specific ID or class.
-    const promptsContainer = document.getElementById('prompts-list-container-id'); // EXAMPLE ID
+    const promptsContainer = document.querySelector(PROMPTS_CONTAINER_SELECTOR);
     if (!promptsContainer) {
-        console.warn("NemoEngine UI Enhancer: Prompts container not found.");
+        console.warn(`NemoEngine UI Enhancer: Prompts container ("${PROMPTS_CONTAINER_SELECTOR}") not found.`);
         return;
     }
 
-    const promptItems = Array.from(promptsContainer.children); // Assuming direct children are prompt items
+    // Check if already organized to prevent re-processing
+    if (promptsContainer.dataset.nemoOrganized === 'true' || promptsContainer.querySelector('details.nemo-engine-section')) {
+        console.log("NemoEngine UI Enhancer: Prompts appear to be already organized or flag is set. Skipping.");
+        return;
+    }
+
+    // Get all direct children that are prompt rows.
+    // The AI example used $container.children('.presets_preset_entry_row'),
+    // so we'll assume prompt rows are direct children.
+    const promptItems = Array.from(promptsContainer.querySelectorAll(`:scope > ${PROMPT_ITEM_ROW_SELECTOR}`));
+
     if (promptItems.length === 0) {
         console.log("NemoEngine UI Enhancer: No prompt items found to organize.");
         return;
@@ -44,92 +58,96 @@ function organizePrompts() {
     let sectionContentWrapper = null;
 
     promptItems.forEach(item => {
-        if (isDivider(item)) {
-            // This is a divider, start a new section
-            console.log("NemoEngine UI Enhancer: Found divider:", item.textContent.trim().match(/.prompt-name-selector/)?.textContent);
+        const dividerInfo = getDividerInfo(item);
 
-            // Create the <details> element for the collapsible section
+        if (dividerInfo.isDivider) {
+            console.log("NemoEngine UI Enhancer: Found divider:", dividerInfo.originalText);
+
             currentSection = document.createElement('details');
             currentSection.classList.add('nemo-engine-section');
-            // currentSection.open = true; // Optionally make sections open by default
+            // currentSection.open = true; // Uncomment to make sections open by default
 
-            // Create the <summary> element (the clickable header)
             const summary = document.createElement('summary');
-            // Move the original divider item's content (or just its name) into the summary
-            // This is tricky: you might want to clone the divider's name display
-            // or restyle the original divider item to act as the summary.
-            // For simplicity here, let's assume we move the whole 'item' which is the divider.
-            // However, ST might have event listeners on 'item', so be careful.
-            // A safer way is to clone the essential display part of 'item'.
-            summary.appendChild(item.cloneNode(true)); // Simplistic, might need refinement
-            // Or, more robustly:
-            // const dividerNameClone = item.querySelector('.prompt-name-selector').cloneNode(true);
-            // summary.appendChild(dividerNameClone);
-            // item.style.display = 'none'; // Hide the original divider item if we cloned its content
+            // IMPORTANT: We move the *original divider item* into the summary.
+            // This preserves its entire structure, including icons and existing ST styling.
+            // The CSS for 'summary' should be minimal so it doesn't clash.
+            summary.appendChild(item.cloneNode(true)); // Clone to avoid issues if item has complex listeners
+                                                      // If ST styling or events are attached directly to `item`,
+                                                      // simple cloning might miss them. Test thoroughly.
+                                                      // A direct appendChild(item) might be better if cloning causes issues.
+                                                      // For now, cloning the visual part is safer if 'item' is complex.
 
             currentSection.appendChild(summary);
 
-            // Create a div to hold the content of this section
             sectionContentWrapper = document.createElement('div');
             sectionContentWrapper.classList.add('nemo-section-content');
             currentSection.appendChild(sectionContentWrapper);
 
-            // Add the new section to the main container (or replace the original divider)
-            // promptsContainer.appendChild(currentSection); // Appends at the end
-            promptsContainer.insertBefore(currentSection, item); // Insert before the original divider
-            item.remove(); // Remove the original flat divider item
+            // Replace the original 'item' (which was the divider row) with the new 'currentSection'
+            promptsContainer.insertBefore(currentSection, item);
+            item.remove(); // Remove the original item from its old position
 
         } else if (currentSection && sectionContentWrapper) {
             // This is a regular prompt item, add it to the current section's content
             sectionContentWrapper.appendChild(item); // Moves the item
         }
-        // If item is not a divider and no section is active, it remains as is (e.g., prompts before the first divider)
+        // If item is not a divider and no section is active, it remains as is
+        // (e.g., prompts before the first divider, or if something went wrong)
     });
 
+    promptsContainer.dataset.nemoOrganized = 'true'; // Mark as organized
     console.log("NemoEngine UI Enhancer: Prompt organization complete.");
 }
 
 
 // 3. EXECUTION LOGIC
 // -----------------------------------------------------------------------------
+const targetNode = document.body; // Observe the whole body for flexibility
+const observerConfig = { childList: true, subtree: true };
 
-// We need to wait for SillyTavern's UI to be ready and the prompts to be loaded.
-// Using a MutationObserver is a good way to detect when the relevant parts of the DOM are available.
+let organizeTimeout = null;
 
-const targetNode = document.body; // Or a more specific parent if known
-const config = { childList: true, subtree: true };
+const observerCallback = function(mutationsList, observer) {
+    // Debounce the organizePrompts call to avoid running it too frequently during rapid DOM changes
+    clearTimeout(organizeTimeout);
+    organizeTimeout = setTimeout(() => {
+        const presetEditorContainer = document.querySelector(PROMPTS_CONTAINER_SELECTOR);
 
-const callback = function(mutationsList, observer) {
-    // Look for a specific element that indicates the preset editor is open and prompts are likely loaded
-    // This is an EXAMPLE selector. You need to find a reliable one in ST.
-    const presetEditorReadyIndicator = document.getElementById('prompts-list-container-id'); // Same as above
+        if (presetEditorContainer) {
+            // Check if it has prompt items AND is not yet marked as organized
+            // Also, ensure it has children that match the item selector to avoid running on an empty container.
+            const hasUnorganizedItems = presetEditorContainer.querySelector(`${PROMPT_ITEM_ROW_SELECTOR}:not(details.nemo-engine-section ${PROMPT_ITEM_ROW_SELECTOR})`);
 
-    if (presetEditorReadyIndicator && !presetEditorReadyIndicator.dataset.nemoOrganized) {
-        organizePrompts();
-        presetEditorReadyIndicator.dataset.nemoOrganized = 'true'; // Mark as organized to prevent re-running
-        // observer.disconnect(); // Optional: disconnect if you only want to run once per page load/major update
-    }
+            if (hasUnorganizedItems && presetEditorContainer.dataset.nemoOrganized !== 'true') {
+                 console.log("NemoEngine UI Enhancer: Detected prompt container with unorganized items. Running organization.");
+                organizePrompts();
+            }
+        } else {
+            // If the main container disappears, we might need to reset flags if we were tracking them globally
+            // For now, if a new container appears, it won't have the 'data-nemo-organized' flag and will be processed.
+        }
+    }, 250); // Adjust debounce delay as needed (e.g., 100-500ms)
 };
 
-const observer = new MutationObserver(callback);
+const observer = new MutationObserver(observerCallback);
 
-// Start observing only when the document is somewhat ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        observer.observe(targetNode, config);
-    });
-} else {
-    observer.observe(targetNode, config);
-    // Potentially run once immediately if content is already there
-    if (document.getElementById('prompts-list-container-id') && !document.getElementById('prompts-list-container-id').dataset.nemoOrganized) {
+function initializeScript() {
+    // Attempt to run once immediately in case content is already there
+    const presetEditorContainer = document.querySelector(PROMPTS_CONTAINER_SELECTOR);
+    if (presetEditorContainer && presetEditorContainer.querySelector(PROMPT_ITEM_ROW_SELECTOR) && presetEditorContainer.dataset.nemoOrganized !== 'true') {
+        console.log("NemoEngine UI Enhancer: Prompt container found on initial load. Running organization.");
         organizePrompts();
-        document.getElementById('prompts-list-container-id').dataset.nemoOrganized = 'true';
     }
+    // Start observing for future changes
+    observer.observe(targetNode, observerConfig);
+    console.log("NemoEngine UI Enhancer: Observer started.");
 }
 
-// Optional: Re-run if the user navigates within ST in a way that reloads the preset UI
-// This can get complex and depends on how ST handles internal navigation (SPA behavior).
-// window.addEventListener('hashchange', organizePrompts); // Example for hash-based routing
-// Or listen for specific custom events ST might fire.
+// Wait for the document to be fully loaded before starting the observer
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeScript);
+} else {
+    initializeScript(); // Already loaded
+}
 
-console.log("NemoEngine UI Enhancer content script loaded.");
+console.log("NemoEngine UI Enhancer content script loaded and awaiting UI.");
