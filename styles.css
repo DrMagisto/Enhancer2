@@ -1,0 +1,30 @@
+.nemo-engine-section summary {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 8px;
+    margin: 5px 0;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    list-style: none;
+    display: block; 
+}
+
+.nemo-engine-section summary::before { 
+    content: '▶ '; 
+    margin-right: 5px;
+}
+
+.nemo-engine-section[open] summary::before {
+    content: '▼ '; 
+}
+
+.nemo-engine-section .nemo-section-content {
+    padding-left: 20px; 
+    border-left: 1px solid #eee;
+    margin-left: 10px;
+}
+
+.nemo-engine-section .nemo-section-content > div {
+    margin-bottom: 3px;
+}
