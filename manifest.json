@@ -1,11 +1,12 @@
 {
-    "display_name": "NemoEngine UI Enhancer",
-    "author": "@NemoVonNirgend",
-    "version": "1.0.0",
-    "description": "Enhances the SillyTavern preset UI by making sections collapsible.",
+    "display_name": "Enhancer2",
+    "author": "@No one From Nowhere",
+    "version": "2.0.0-dev",
+    "description": "Advanced prompt management: UI organization (collapsible sections, search) and contextual prompt activation triggers.",
     "requires": [],
     "optional": [],
     "js": "content.js",
-    "css": "styles.css",
-    "loading_order": 1000
+    "css": "style.css",
+    "homePage": "https://github.com/DrMagisto/Enhancer2",
+    "loading_order": 9000
 }
