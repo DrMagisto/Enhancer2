@@ -1,0 +1,84 @@
+<!-- Enhancer2/settings.html -->
+
+<div class="enhancer2-settings-container">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>Enhancer2 Settings</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div class="enhancer2-settings-section">
+                <h4>UI Organization</h4>
+                <div class="caption">Customize how the prompt list is displayed.</div>
+
+                <div class="enhancer2-setting">
+                    <label for="enhancer2DividerRegexPattern">Section Divider Regex Pattern:</label>
+                    <input type="text" id="enhancer2DividerRegexPattern" class="text_pole" placeholder="e.g., =+ or ---+">
+                    <button id="enhancer2SaveRegexSettings" class="menu_button">Save Pattern</button>
+                    <div id="enhancer2RegexStatus" class="enhancer2-status-message"></div>
+                    <div class="text_muted">
+                        Prompts starting with this regex (e.g., "=== My Section") will create collapsible sections.
+                        Default: <code>=+</code> (one or more equals signs).
+                    </div>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="enhancer2-settings-section">
+                <h4>Contextual Trigger System</h4>
+                <div class="caption">Automatically toggle prompts based on message content.</div>
+
+                <div class="enhancer2-setting">
+                    <label class="checkbox_label" for="enhancer2EnablePromptTriggers">
+                        <input type="checkbox" id="enhancer2EnablePromptTriggers">
+                        Enable Prompt Trigger System
+                    </label>
+                    <!-- 
+                        Removed dedicated save button for this, as the checkbox change now directly saves.
+                        If you prefer a button:
+                        <button id="enhancer2SaveTriggerSystemSettings" class="menu_button">Save Trigger Setting</button> 
+                    -->
+                    <div id="enhancer2TriggerSystemStatus" class="enhancer2-status-message"></div>
+                    <div class="text_muted">
+                        When enabled, prompts can be activated/deactivated by keywords or regex in user messages.
+                        Configure triggers within individual prompt editors or via a Master Trigger Prompt.
+                    </div>
+                </div>
+                
+                <div class="enhancer2-setting" style="margin-top: 15px;">
+                    <strong>Using the Master Trigger Prompt:</strong>
+                    <ol style="font-size: 0.9em; margin-left: 20px;">
+                        <li>Create a new prompt (e.g., "My Preset's Enhancer2 Triggers").</li>
+                        <li>The <strong>very first line</strong> of this prompt's content must be exactly:
+                            <br><code>%%% NEMO_MASTER_TRIGGER_DEFINITIONS_V1 %%%</code>
+                        </li>
+                        <li>On subsequent lines, define triggers using the format:
+                            <br><code>[prompt_id_to_target] :: trigger_keyword, /regex/i</code>
+                            <br>(Get prompt_ids by inspecting the prompt list in dev tools, or future helper).
+                        </li>
+                        <li>After importing a preset with such a master prompt, open it once in the editor. Enhancer2 will process the definitions and activate them in your browser settings.</li>
+                    </ol>
+                </div>
+                 <div class="enhancer2-setting" style="margin-top: 10px;">
+                    <strong>Using Individual Prompt Trigger Comments (for defaults):</strong>
+                     <p style="font-size: 0.9em;">
+                        To set a default trigger for a single prompt that can be shared with a preset, add a comment like this to its main content:
+                        <br><code><!-- enhancer2_triggers: your_keyword, /your_regex/i --></code>
+                        <br>This will pre-fill the trigger field in the prompt editor if no specific trigger is already saved for it.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Placeholder for a debug button if needed later -->
+            <!-- 
+            <hr>
+            <div class="enhancer2-settings-section">
+                <h4>Debug</h4>
+                <button id="enhancer2ForceCheckPmInstance" class="menu_button">Debug Info</button>
+                <div id="enhancer2PmInstanceStatus" class="enhancer2-status-message"></div>
+            </div>
+            -->
+        </div>
+    </div>
+</div>
