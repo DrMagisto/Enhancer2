@@ -1,30 +1,239 @@
-.nemo-engine-section summary {
-    cursor: pointer;
-    font-weight: bold;
-    padding: 8px;
-    margin: 5px 0;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    list-style: none;
-    display: block; 
+/* Enhancer2/style.css */
+
+/* --- UI Organizer: Loading Overlay --- */
+.enhancer2-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(30, 30, 30, 0.7); /* Darker overlay */
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
 
-.nemo-engine-section summary::before { 
-    content: '▶ '; 
+.enhancer2-loading-overlay.enhancer2-visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0s linear 0s;
+}
+
+.enhancer2-spinner {
+    border: 4px solid #f3f3f333; /* Lighter border for contrast on dark */
+    border-top: 4px solid #3498db; /* Blue spinner */
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: enhancer2-spin 1s linear infinite;
+}
+
+@keyframes enhancer2-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* --- UI Organizer: Section Styling --- */
+#completion_prompt_manager_list details.enhancer2-engine-section {
+    border-left: 3px solid #4a4a4a; /* Slightly more prominent border */
+    margin-bottom: 5px;
+    padding-left: 5px;
+    background-color: rgba(0,0,0,0.05); /* Very subtle background for sections */
+}
+
+#completion_prompt_manager_list details.enhancer2-engine-section summary {
+    cursor: pointer;
+    padding: 3px 0;
+    outline: none; /* Remove focus outline from summary */
+    display: flex; /* To align items if needed, though li takes full width */
+}
+#completion_prompt_manager_list details.enhancer2-engine-section summary > li {
+    width: 100%; /* Ensure the li inside summary takes full width */
+}
+
+
+#completion_prompt_manager_list details.enhancer2-engine-section .enhancer2-section-content {
+    padding-left: 15px; /* Indent content within sections */
+    border-left: 1px dashed #555;
+    margin-top: 3px;
+}
+
+/* --- UI Organizer: Right Controls Wrapper & Enabled Count --- */
+.enhancer2-right-controls-wrapper {
+    margin-left: auto; /* Pushes controls to the right */
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between items in the wrapper */
+    padding-left: 10px; /* Space from the prompt name */
+}
+
+.enhancer2-enabled-count {
+    font-size: 0.85em;
+    color: #aaa;
+    margin-right: 5px; /* Space before ST controls */
+    white-space: nowrap;
+}
+
+/* Ensure prompt name doesn't get squished too much by right controls */
+#completion_prompt_manager_list li.completion_prompt_manager_prompt {
+    display: flex; /* Make li a flex container */
+    align-items: center; /* Vertically align items */
+}
+#completion_prompt_manager_list li.completion_prompt_manager_prompt > span.completion_prompt_manager_prompt_name {
+    flex-grow: 1; /* Allow name to take available space */
+    overflow: hidden; /* Prevent long names from breaking layout */
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 5px; /* Give some space before the right wrapper starts */
+}
+
+
+/* --- UI Organizer: Search Bar (if any specific styling needed beyond .text_pole) --- */
+#enhancer2PresetSearchContainer {
+    /* Styles already applied in JS, but can add more here if needed */
+}
+#enhancer2PresetSearchInput {
+    /* Inherits .text_pole */
+}
+#enhancer2PresetSearchClear {
+    /* Inherits .menu_button */
+}
+
+
+/* --- Trigger Handler: UI in Prompt Editor --- */
+/* For regular prompt trigger config */
+#enhancer2PromptTriggerConfigRegular {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #333; /* Subtle border */
+    border-radius: 4px;
+    background-color: rgba(0,0,0,0.1); /* Slightly different background */
+}
+#enhancer2PromptTriggerConfigRegular label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+#enhancer2PromptTriggerInput { /* Already has .text_pole */
+    width: calc(100% - 12px); /* Adjust for padding if text_pole doesn't handle it */
+    margin-bottom: 8px;
+}
+#enhancer2GeneratedCommentArea label {
+    font-weight: normal; /* Less emphasis for this label */
+    font-size: 0.9em;
+    margin-bottom: 3px;
+}
+#enhancer2GeneratedCommentText { /* Already has .text_pole */
+    background-color: #2b2b2b !important; /* Ensure readonly style */
+    font-family: monospace;
+    font-size: 0.9em;
+}
+#enhancer2CopyCommentButton { /* Already has .menu_button .fa-solid .fa-copy */
+    padding: 5px 10px; /* Adjust padding for better icon fit */
+    height: fit-content; /* Align with text input */
+}
+#enhancer2CopyCommentButton.success_button { /* For temporary feedback */
+    background-color: #28a745 !important; /* Green success */
+    border-color: #28a745 !important;
+    color: white !important;
+}
+
+
+/* For Master Prompt processing results */
+#enhancer2MasterProcessingResults {
+    margin-top: 15px;
+    padding: 10px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background-color: rgba(0,0,0,0.1);
+}
+#enhancer2MasterProcessingResults h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+#enhancer2MasterProcessingResults ul {
+    list-style-type: none;
+    padding-left: 0;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    max-height: 200px; /* Scroll for many results */
+    overflow-y: auto;
+    background: #222; /* Darker background for the list itself */
+    padding: 8px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+#enhancer2MasterProcessingResults ul li {
+    padding: 2px 0;
+    border-bottom: 1px solid #383838;
+}
+#enhancer2MasterProcessingResults ul li:last-child {
+    border-bottom: none;
+}
+#enhancer2MasterProcessingResults p { /* For the summary message */
+    margin-top: 10px;
+    font-size: 0.95em;
+}
+
+
+/* --- Settings Panel --- */
+.enhancer2-settings-container .inline-drawer-content {
+    padding: 10px;
+}
+.enhancer2-settings-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    /* border-bottom: 1px solid #444; remove if using hr */
+}
+.enhancer2-settings-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+.enhancer2-settings-section h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #c5c5c5; /* Lighter heading color */
+}
+.enhancer2-settings-section .caption {
+    font-size: 0.9em;
+    color: #aaa;
+    margin-bottom: 10px;
+}
+.enhancer2-setting {
+    margin-bottom: 10px;
+}
+.enhancer2-setting label:not(.checkbox_label) { /* For text input labels */
+    display: block;
+    margin-bottom: 3px;
+    font-size: 0.95em;
+}
+.enhancer2-setting input[type="text"].text_pole {
+    width: calc(100% - 100px); /* Adjust width if button is next to it */
     margin-right: 5px;
 }
-
-.nemo-engine-section[open] summary::before {
-    content: '▼ '; 
+.enhancer2-setting button.menu_button {
+    min-width: 80px; /* Give save buttons a bit of width */
 }
-
-.nemo-engine-section .nemo-section-content {
-    padding-left: 20px; 
-    border-left: 1px solid #eee;
-    margin-left: 10px;
+.enhancer2-status-message {
+    font-size: 0.85em;
+    margin-top: 4px;
+    min-height: 1.2em; /* Prevent layout jump */
 }
-
-.nemo-engine-section .nemo-section-content > div {
-    margin-bottom: 3px;
+.enhancer2-settings-section ol {
+    font-size: 0.9em;
+    color: #bbb;
+    background-color: rgba(0,0,0,0.1);
+    padding: 10px 10px 10px 30px; /* More padding for ol */
+    border-radius: 3px;
+}
+.enhancer2-settings-section code {
+    background-color: #2a2a2a;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    color: #d1d1d1;
 }
