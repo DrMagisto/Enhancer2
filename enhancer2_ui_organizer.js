@@ -325,8 +325,7 @@
         setTimeout(() => requestAnimationFrame(hideLoadingOverlay), Math.max(0, remainingTimeMs));
     }
 
-
-    // --- SEARCH UI ---
+// --- SEARCH UI ---
     function showAllPromptsAndSections() {
         const promptsContainer = document.querySelector(PROMPTS_CONTAINER_SELECTOR);
         if (!promptsContainer) return;
@@ -339,7 +338,6 @@
             }
         });
     }
-
     function handlePresetSearch() {
         const searchInput = document.getElementById('enhancer2PresetSearchInput');
         if (!searchInput) return;
@@ -354,4 +352,218 @@
                 if (summaryLi) {
                     const dividerInfo = getDividerInfo(summaryLi);
                     if (dividerInfo.isDivider) {
-                        sectionEl.open = openSectionStates[div
+                        sectionEl.open = openSectionStates[dividerInfo.originalText] || false;
+                    }
+                }
+            });
+            return;
+        }
+        const getLiName = (liElement) => {
+            const fullName = liElement.dataset.enhancer2FullName; // Use stored full name for searching
+            return fullName ? fullName.toLowerCase() : '';
+        };
+        promptsContainer.querySelectorAll(':scope > details.enhancer2-engine-section').forEach(sectionEl => {
+            let sectionContainsMatch = false;
+            const summaryLi = sectionEl.querySelector(':scope > summary > li.completion_prompt_manager_prompt');
+            if (summaryLi && getLiName(summaryLi).includes(searchTerm)) sectionContainsMatch = true;
+
+            sectionEl.querySelectorAll(':scope > .enhancer2-section-content > li.completion_prompt_manager_prompt').forEach(itemLi => {
+                if (getLiName(itemLi).includes(searchTerm)) { sectionContainsMatch = true; itemLi.style.removeProperty('display'); }
+                else itemLi.style.display = 'none';
+            });
+            if (sectionContainsMatch) { sectionEl.style.removeProperty('display'); sectionEl.open = true; }
+            else sectionEl.style.display = 'none';
+        });
+        promptsContainer.querySelectorAll(':scope > li.completion_prompt_manager_prompt').forEach(itemLi => {
+            if (getLiName(itemLi).includes(searchTerm)) itemLi.style.removeProperty('display');
+            else itemLi.style.display = 'none';
+        });
+    }
+    function initializePresetSearchUI() {
+        if (document.getElementById('enhancer2PresetSearchContainer')) {
+            if (!searchUiInitialized) searchUiInitialized = true;
+            return;
+        }
+        const promptsListElement = document.querySelector(PROMPTS_CONTAINER_SELECTOR);
+        if (!promptsListElement || !promptsListElement.parentElement) {
+            searchUiInitialized = false;
+            setTimeout(initializePresetSearchUI, 1500);
+            return;
+        }
+               const searchContainer = document.createElement('div');
+        searchContainer.id = 'enhancer2PresetSearchContainer';
+        searchContainer.style.marginBottom = '10px'; searchContainer.style.display = 'flex';
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text'; searchInput.id = 'enhancer2PresetSearchInput';
+        searchInput.placeholder = 'Search loaded prompts...';
+        searchInput.style.flexGrow = '1'; searchInput.style.marginRight = '5px'; searchInput.classList.add('text_pole');
+        const clearButton = document.createElement('button');
+        clearButton.id = 'enhancer2PresetSearchClear'; clearButton.innerHTML = '<i class="fa-solid fa-times"></i>'; clearButton.title = 'Clear search';
+        clearButton.classList.add('menu_button'); clearButton.style.minWidth = 'auto';
+        searchContainer.appendChild(searchInput); searchContainer.appendChild(clearButton);
+        promptsListElement.parentElement.insertBefore(searchContainer, promptsListElement);
+        searchInput.addEventListener('input', handlePresetSearch);
+        clearButton.addEventListener('click', () => { searchInput.value = ''; handlePresetSearch(); searchInput.focus(); });
+        searchUiInitialized = true;
+        console.log(`${LOG_PREFIX_MODULE} Preset Search UI initialized.`);
+    }
+    function attachSharedEventListeners(container) {
+        if (!container || container.dataset.enhancer2SharedListenersAttached) return;
+
+        container.addEventListener('click', function(event) {
+            // If a toggle button inside a section summary is clicked,
+            // and search is active, clear search to show context.
+            const toggleButton = event.target.closest(ST_TOGGLE_ICON_SELECTOR);
+            const searchInput = document.getElementById('enhancer2PresetSearchInput');
+            if (toggleButton && searchInput && searchInput.value.trim() !== '') {
+                const summary = event.target.closest('summary');
+                if (summary) { // Only if toggle is in a summary
+                    searchInput.value = ''; 
+                    handlePresetSearch();
+                }
+            }
+            // If a non-interactive part of a top-level prompt row is clicked,
+            // or if a section summary is clicked (not its interactive parts),
+            // re-run organization to update counts, etc.
+            const promptRow = event.target.closest(PROMPT_ITEM_ROW_SELECTOR);
+            if (promptRow) {
+                const isTopLevelItem = promptRow.parentElement === container;
+                const isSummaryItem = promptRow.parentElement?.tagName === 'SUMMARY' && promptRow.parentElement.parentElement.parentElement === container;
+                if (isTopLevelItem || isSummaryItem) {
+                    if (!event.target.closest(INTERACTIVE_ELEMENTS_INSIDE_ROW)) {
+                        if (organizeTimeout) clearTimeout(organizeTimeout);
+                        organizeTimeout = setTimeout(() => {
+                            if (container.dataset.enhancer2Organized === 'true') {
+                                // console.log(`${LOG_PREFIX_MODULE} Re-organizing due to click.`);
+                                organizePrompts();
+                            }
+                        }, 150); // Slightly longer delay
+                    }
+                }
+            }
+        });
+        container.dataset.enhancer2SharedListenersAttached = 'true';
+    }
+    // --- OBSERVER FOR PROMPT LIST CHANGES ---
+    function initializePromptListObserver() {
+        const targetNode = document.querySelector(PROMPTS_CONTAINER_SELECTOR);
+        if (!targetNode) {
+            console.warn(`${LOG_PREFIX_MODULE} Prompt list container not found for observer. Retrying.`);
+            setTimeout(initializePromptListObserver, 1500);
+            return;
+        }
+                const observerConfig = { childList: true, subtree: true };
+        const observerCallback = function (mutationsList, observer) {
+            let applyOrganization = false;
+            for (const mutation of mutationsList) {
+                // Check if the mutation target itself is the list or something inside it
+                if (mutation.target === targetNode || mutation.target.closest(PROMPTS_CONTAINER_SELECTOR)) {
+                    applyOrganization = true;
+                    break;
+                }
+                // Check if prompt items were added
+                if (mutation.addedNodes.length > 0) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === 1 && (node.matches && (node.matches(PROMPT_ITEM_ROW_SELECTOR) || node.querySelector(PROMPT_ITEM_ROW_SELECTOR)))) {
+                            applyOrganization = true;
+                            break;
+                        }
+                    }
+                }
+                if (applyOrganization) break;
+            }
+            if (applyOrganization) {
+                if (organizeTimeout) clearTimeout(organizeTimeout);
+                // Always run organizePrompts to update enhancer2PromptMap and UI
+                organizeTimeout = setTimeout(() => { 
+                    // console.log(`${LOG_PREFIX_MODULE} Prompt list changed, organizing...`);
+                    organizePrompts(); 
+                }, 250); // Debounce
+            }
+        };
+        mainObserver = new MutationObserver(observerCallback);
+        mainObserver.observe(targetNode, observerConfig);
+        console.log(`${LOG_PREFIX_MODULE} Prompt list observer initialized.`);
+    }
+    // --- INITIALIZATION AND PUBLIC API ---
+    window.Enhancer2UIOrganizer = {
+        initialize: async function (deps) {
+            dependencies = deps;
+            LOG_PREFIX_MODULE = `${dependencies.LOG_PREFIX_BASE}-UIOrg`;
+            console.log(`${LOG_PREFIX_MODULE} Initializing...`);
+
+            if (!dependencies.extension_settings) {
+                console.error(`${LOG_PREFIX_MODULE} Critical: extension_settings dependency missing.`);
+                return;
+            }
+            // Ensure its own settings namespace if it has specific ones
+            const ENHANCER2_EXTENSION_NAME = dependencies.extension_settings.Enhancer2 ? "Enhancer2" : Object.keys(dependencies.extension_settings)[0] || "Enhancer2";
+            dependencies.extension_settings[ENHANCER2_EXTENSION_NAME] = dependencies.extension_settings[ENHANCER2_EXTENSION_NAME] || {};
+            if (dependencies.extension_settings[ENHANCER2_EXTENSION_NAME].dividerRegexPattern === undefined) {
+                dependencies.extension_settings[ENHANCER2_EXTENSION_NAME].dividerRegexPattern = NEMO_DEFAULT_REGEX_PATTERN;
+            }
+
+
+            await loadAndSetDividerRegex();
+            initializePresetSearchUI(); // Initialize search bar
+            
+            const presetEditorContainer = document.querySelector(PROMPTS_CONTAINER_SELECTOR);
+            if (presetEditorContainer) {
+                await organizePrompts(); // Initial organization
+                attachSharedEventListeners(presetEditorContainer);
+                } else {
+                console.warn(`${LOG_PREFIX_MODULE} Prompt container not found for initial organization.`);
+            }
+            
+            initializePromptListObserver(); // Start observing for changes
+
+            console.log(`${LOG_PREFIX_MODULE} Initialized.`);
+        },
+        initializeSettingsUI: function(deps) { // Called by content.js loader
+            // This module is responsible for its part of the settings UI
+            // e.g., the Divider Regex Pattern input
+            dependencies = dependencies || deps; // Ensure dependencies are set if called early
+            LOG_PREFIX_MODULE = LOG_PREFIX_MODULE || `${dependencies.LOG_PREFIX_BASE}-UIOrg`;
+            const regexInput = document.getElementById('enhancer2DividerRegexPattern'); // Assuming ID in settings.html
+            const saveRegexButton = document.getElementById('enhancer2SaveRegexSettings');
+            const regexStatusDiv = document.getElementById('enhancer2RegexStatus');
+
+            if (!regexInput || !saveRegexButton || !regexStatusDiv) {
+                // console.warn(`${LOG_PREFIX_MODULE} Divider Regex Settings UI elements not found in settings.html. Maybe settings.html not loaded yet.`);
+                return;
+            }
+            
+            const ENHANCER2_EXTENSION_NAME = dependencies.extension_settings.Enhancer2 ? "Enhancer2" : Object.keys(dependencies.extension_settings)[0] || "Enhancer2";
+            regexInput.value = dependencies.extension_settings[ENHANCER2_EXTENSION_NAME]?.dividerRegexPattern || NEMO_DEFAULT_REGEX_PATTERN;
+            saveRegexButton.addEventListener('click', async () => {
+                if (!dependencies.saveSettingsDebounced) {
+                    regexStatusDiv.textContent = 'Error: Save function missing.'; regexStatusDiv.style.color = 'red'; return;
+                }
+   let patternToSave = regexInput.value.trim() === '' ? NEMO_DEFAULT_REGEX_PATTERN : regexInput.value.trim();
+                try { new RegExp(`^(${patternToSave})`); } 
+                catch (e) { regexStatusDiv.textContent = `Invalid Regex: ${e.message}. Not saved.`; regexStatusDiv.style.color = 'red'; return; }
+                dependencies.extension_settings[ENHANCER2_EXTENSION_NAME].dividerRegexPattern = patternToSave;
+                dependencies.saveSettingsDebounced();
+                regexStatusDiv.textContent = 'Regex pattern saved!'; regexStatusDiv.style.color = 'lightgreen';
+                await loadAndSetDividerRegex();
+                
+                const pc = document.querySelector(PROMPTS_CONTAINER_SELECTOR); 
+                if (pc) {
+                    pc.dataset.enhancer2Organized = 'false'; // Force re-organization
+                    organizePrompts(); // Trigger re-organization immediately
+                }
+                setTimeout(() => { if(regexStatusDiv) regexStatusDiv.textContent = ''; }, 3000);
+            });
+            console.log(`${LOG_PREFIX_MODULE} Divider Regex settings UI initialized.`);
+        },
+
+        getPromptMap: function () {
+            return enhancer2PromptMap;
+        },
+        forceOrganizePrompts: function() { // Expose if other modules need to trigger re-org
+            console.log(`${LOG_PREFIX_MODULE} forceOrganizePrompts called.`);
+            return organizePrompts();
+        }
+    };
+    console.log(`${LOG_PREFIX_MODULE} Script loaded. Waiting for initialize().`);
+})();
